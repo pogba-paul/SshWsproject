@@ -1,18 +1,23 @@
 #!/bin/bash
 
-# 1. إعداد كلمة السر للسيرفر
+# 1. تعيين كلمة السر
 USER_PASS=${SSH_PASSWORD:-"root123"}
 echo "root:$USER_PASS" | chpasswd
 
-# 2. تشغيل خدمة الـ SSH الأساسية
+# 2. إيقاف أي خدمة قد تحاول استخدام المنفذ 8080 (لحل مشكلة bind: address already in use)
+fuser -k 8080/tcp || true
+service shellinabox stop || true
+
+# 3. تشغيل SSH
 mkdir -p /var/run/sshd
 /usr/sbin/sshd
 
-# 3. تحميل أداة Gost وتجهيزها
-# هذه الأداة ستعمل كمترجم لأي Payload ترسلها من التطبيق
-curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz | gunzip > /usr/local/bin/gost
-chmod +x /usr/local/bin/gost
+# 4. تثبيت Gost (إذا لم يكن موجوداً)
+if [ ! -f /usr/local/bin/gost ]; then
+    curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz | gunzip > /usr/local/bin/gost
+    chmod +x /usr/local/bin/gost
+fi
 
-# 4. تشغيل Gost لقبول Websocket و TCP و HTTP في نفس الوقت
-# هذا الأمر يجعل السيرفر يفهم الـ BMOVE والـ HEAD والروابط الخارجية
+# 5. تشغيل Gost كعملية أساسية (بدون & في النهاية لضمان بقاء الحاوية تعمل)
+# سيستقبل السيرفر الآن Websocket و TCP و HTTP على منفذ 8080
 /usr/local/bin/gost -L=ws://:8080?path=/ -L=tcp://:8080
