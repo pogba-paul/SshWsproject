@@ -1,14 +1,14 @@
 #!/bin/bash
+
+# 1. إعداد كلمة السر
 USER_PASS=${SSH_PASSWORD:-"root123"}
 echo "root:$USER_PASS" | chpasswd
 
-# تنظيف شامل للمنافذ
+# 2. تنظيف المنافذ
 fuser -k -9 8080/tcp || true
-fuser -k -9 22/tcp || true
 
-# تشغيل SSH على المنفذ 22
+# 3. تشغيل SSH في الخلفية
 /usr/sbin/sshd
 
-# تشغيل Gost ليعمل كـ "جسر"
-# سيستمع على 8080 (منفذ Koyeb) ويوجه لـ 22 (SSH)
-/usr/local/bin/gost -L=:8080 -F=forward://127.0.0.1:22
+# 4. تشغيل Gost كعملية أساسية (الآن المسار مضمون)
+/usr/local/bin/gost -L=:8080
