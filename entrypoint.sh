@@ -1,22 +1,14 @@
 #!/bin/bash
-
-# 1. تعيين كلمة السر
 USER_PASS=${SSH_PASSWORD:-"root123"}
 echo "root:$USER_PASS" | chpasswd
 
-# 2. قتل أي عملية تستخدم المنفذ 8080 بقوة (SIGKILL)
+# تنظيف شامل للمنافذ
 fuser -k -9 8080/tcp || true
+fuser -k -9 22/tcp || true
 
-# 3. تشغيل SSH
+# تشغيل SSH على المنفذ 22
 /usr/sbin/sshd
 
-# 4. تحميل Gost
-if [ ! -f /usr/local/bin/gost ]; then
-    curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz | gunzip > /usr/local/bin/gost
-    chmod +x /usr/local/bin/gost
-fi
-
-# 5. تشغيل Gost
-# أضفنا تأخير بسيط (sleep) للتأكد من أن النظام حرر المنفذ تماماً
-sleep 2
-/usr/local/bin/gost -L=:8080
+# تشغيل Gost ليعمل كـ "جسر"
+# سيستمع على 8080 (منفذ Koyeb) ويوجه لـ 22 (SSH)
+/usr/local/bin/gost -L=:8080 -F=forward://127.0.0.1:22
