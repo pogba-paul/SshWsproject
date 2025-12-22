@@ -4,11 +4,12 @@
 USER_PASS=${SSH_PASSWORD:-"root123"}
 echo "root:$USER_PASS" | chpasswd
 
-# 2. تنظيف المنافذ
-fuser -k -9 8080/tcp || true
-
-# 3. تشغيل SSH في الخلفية
+# 2. تشغيل SSH 
+# تأكد من إنشاء مفاتيح المضيف إذا لم تكن موجودة
+ssh-keygen -A
 /usr/sbin/sshd
 
-# 4. تشغيل Gost كعملية أساسية (الآن المسار مضمون)
-/usr/local/bin/gost -L=:8080
+# 3. تشغيل Gost 
+# أضفنا & لجعل العملية تعمل ونضمن بقاء الحاوية تعمل بـ wait أو تشغيلها مباشرة
+echo "Starting Gost on port 8080..."
+exec /usr/local/bin/gost -L=:8080
