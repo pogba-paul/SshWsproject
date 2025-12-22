@@ -1,22 +1,46 @@
+# استخدام نسخة Ubuntu مستقرة
 FROM ubuntu:22.04
 
-# تثبيت المتطلبات الأساسية
+# تثبيت الأدوات الضرورية
 RUN apt-get update && apt-get install -y \
-    openssh-server sudo curl net-tools psmisc ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    openssh-server \
+    python3 \
+    python3-pip \
+    sudo \
+    curl \
+    net-tools
 
-# تحميل وتثبيت Gost مباشرة داخل الصورة
-RUN curl -L https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz | gunzip > /usr/local/bin/gost && \
-    chmod +x /usr/local/bin/gost
+# إعداد المستخدم (يمكنك تغيير اسم المستخدم وكلمة السر هنا)
+RUN useradd -m -s /bin/bash geminiuser && echo "geminiuser:password123" | chpasswd && adduser geminiuser sudo
+RUN mkdir /var/run/sshd
 
-# إعداد SSH
-RUN mkdir -p /var/run/sshd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+# تثبيت مكتبة الـ Websocket
+RUN pip3 install websocket-server
 
-EXPOSE 8080 22
+# إنشاء سكربت التشغيل الذي يدمج SSH مع المحول
+RUN echo 'import socket, threading; \
+from websocket_server import WebsocketServer; \
+def new_client(client, server): \
+    try: \
+        ssh_sock = socket.socket(); \
+        ssh_sock.connect(("127.0.0.1", 22)); \
+        def forward(a, b): \
+            try: \
+                while True: \
+                    d = a.recv(4096); \
+                    if not d: break; \
+                    b.send(d) \
+            except: pass \
+        threading.Thread(target=forward, args=(client["handler"].request, ssh_sock)).start(); \
+        threading.Thread(target=forward, args=(ssh_sock, client["handler"].request)).start(); \
+    except: pass \
+port = 10000; \
+server = WebsocketServer(host="0.0.0.0", port=port); \
+server.set_fn_new_client(new_client); \
+server.run_forever()' > /ws_proxy.py
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# البورت الافتراضي في Render هو 10000
+EXPOSE 10000
 
-ENTRYPOINT ["/entrypoint.sh"]
+# تشغيل السيرفر
+CMD /usr/sbin/sshd && python3 /ws_proxy.py
