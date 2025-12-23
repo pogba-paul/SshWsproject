@@ -31,7 +31,7 @@ try:
 except Exception as e:
     logging.warning(f"Could not secure current script file permissions: {e}")
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8236536287:AAGR2hcnhmkUZL5r4XvH86Mpkd_ZP2Jx5CU')
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHANNEL_USERNAME = "@PharaohNetArab"
 ADMIN_ID = 7083438415
 
